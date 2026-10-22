@@ -30,3 +30,6 @@ dist-ssr
 *.sw?
 
 deploy-rules.ps1
+# Local Firebase files and configuration backups
+.firebase/
+firebase.json.backup
