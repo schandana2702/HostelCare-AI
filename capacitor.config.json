@@ -1,0 +1,9 @@
+{
+  "appId": "com.hostelcare.app",
+  "appName": "HostelCare AI",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

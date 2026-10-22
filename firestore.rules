@@ -1,0 +1,146 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? getUserData().role
+        : null;
+    }
+
+    function isAdmin() {
+      return getUserRole() == 'admin' || getUserRole() == 'administrator';
+    }
+
+    function isWarden() {
+      return getUserRole() == 'warden' || isAdmin();
+    }
+
+    function isMaintenance() {
+      return getUserRole() == 'maintenance' || isAdmin();
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profiles collection
+    match /users/{userId} {
+      // Any authenticated user can read profiles (needed for staff/student name display)
+      allow read: if isAuthenticated();
+
+      // SECURITY: Self-registration creates a student profile ONLY.
+      // - The Firestore rule enforces role == 'student' at the database level.
+      // - AuthContext.register() also hard-codes role = 'student' at the app layer.
+      // - Privileged roles (warden, maintenance, admin) can ONLY be assigned by
+      //   an existing admin via the allow update rule below, or directly in Firebase
+      //   Console by the system owner for the very first admin account.
+      allow create: if isOwner(userId)
+        && request.resource.data.role == 'student'
+        && request.resource.data.status == 'active';
+
+      // Users can update their own non-sensitive profile fields.
+      // Only an admin can change role or status — enforced by the diff check.
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])
+      );
+
+      // Only admin can delete user profiles
+      allow delete: if isAdmin();
+    }
+
+    // Complaints collection
+    match /complaints/{complaintId} {
+      // Read: Admin & Warden can read all; Maintenance can read all or assigned; Students can read their own
+      allow read: if isAuthenticated() && (
+        isWarden() || 
+        isMaintenance() || 
+        resource.data.studentId == request.auth.uid
+      );
+
+      // Create: Authenticated users can create complaints for themselves
+      allow create: if isAuthenticated() && request.resource.data.studentId == request.auth.uid;
+
+      // Update:
+      // - Admins can update anything
+      // - Wardens can assign, update status, change priority, add notes
+      // - Maintenance can update if assigned to them (status, workNotes, resolutionProof)
+      // - Students can update only their own complaint for resolution confirmation / feedback rating
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        isWarden() ||
+        (isMaintenance() && resource.data.assignedToId == request.auth.uid) ||
+        (resource.data.studentId == request.auth.uid && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'feedback', 'rating', 'resolvedAt', 'updatedAt', 'statusNote', 'history', 'closedBy', 'closedAt']) &&
+         request.resource.data.status == 'CLOSED')
+      );
+
+      // Delete: Only admin can delete complaints
+      allow delete: if isAdmin();
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can read and update their own notifications (e.g., mark as read)
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Authenticated users and system can create notifications
+      allow create: if isAuthenticated();
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Announcements collection
+    match /announcements/{announcementId} {
+      // All authenticated users can read announcements
+      allow read: if isAuthenticated();
+      // Only wardens and admins can create, update, or delete announcements
+      allow create, update, delete: if isWarden();
+    }
+
+    // Room Inspections collection
+    match /inspections/{inspectionId} {
+      // Wardens and admins can read/write, students can read inspections for their room/hostel
+      allow read: if isAuthenticated();
+      allow write: if isWarden();
+    }
+
+    // Maintenance Calendar events
+    match /calendarEvents/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isWarden() || isMaintenance();
+    }
+
+    // Audit logs collection
+    match /auditLogs/{logId} {
+      // Wardens and admins can read audit logs
+      allow read: if isWarden() || isAdmin();
+      // Any authenticated user action can append to audit logs
+      allow create: if isAuthenticated();
+      // Audit logs are immutable
+      allow update, delete: if false;
+    }
+
+    // System Settings & Categories
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Hostel Blocks & Room Configuration
+    match /hostels/{blockId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
+

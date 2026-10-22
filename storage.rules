@@ -1,0 +1,52 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─────────────────────────────────────────────
+    // Complaint image attachments
+    //
+    // Path: complaints/{complaintId}/{imageId}
+    //   complaintId – Firestore document ID or 'pending' (pre-creation uploads)
+    //   imageId     – timestamp_random.ext collision-free filename
+    // ─────────────────────────────────────────────
+    match /complaints/{complaintId}/{imageId} {
+      // Any authenticated user can read complaint images.
+      // RBAC (which complaint a user is authorised to open) is enforced by
+      // Firestore rules on the /complaints/{complaintId} document; the
+      // Storage download URL is only ever embedded in that document.
+      allow read: if request.auth != null;
+
+      // Authenticated students may create (upload) an image, subject to:
+      //   • file size  < 5 MB
+      //   • content-type is an image/* MIME type
+      // These constraints mirror the client-side validateImageFile() checks.
+      allow create: if request.auth != null
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+
+      // Updates to existing objects are not permitted.
+      // A new filename is always generated on re-upload, so updates are unused.
+      allow update: if false;
+
+      // Deletion is restricted to authenticated users only.
+      // Administrative cleanup (e.g. complaint deletion by admin) should be
+      // performed server-side via the Admin SDK; client-side deletion is not
+      // part of the current application flow.
+      allow delete: if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // User profile avatars
+    //
+    // Path: avatars/{userId}
+    // ─────────────────────────────────────────────
+    match /avatars/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.size < 2 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
