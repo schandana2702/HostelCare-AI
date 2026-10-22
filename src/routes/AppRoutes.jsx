@@ -37,7 +37,6 @@ import AdminDashboard from '../pages/admin/AdminDashboard';
 import UserManagement from '../pages/admin/UserManagement';
 import AllComplaints from '../pages/admin/AllComplaints';
 import CategorySettings from '../pages/admin/CategorySettings';
-import AuditLogs from '../pages/admin/AuditLogs';
 import HostelManagement from '../pages/admin/HostelManagement';
 
 // Common Pages
@@ -268,16 +267,9 @@ export default function AppRoutes() {
         {/* Canonical SRS alias */}
         <Route path="/admin/categories" element={<Navigate to="/admin/settings" replace />} />
 
-        <Route
-          path="/admin/audit"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.ADMINISTRATOR]}>
-              <AuditLogs />
-            </ProtectedRoute>
-          }
-        />
-        {/* Canonical SRS alias */}
-        <Route path="/admin/logs" element={<Navigate to="/admin/audit" replace />} />
+        {/* Audit logs routes removed from administrator UI; redirect to dashboard */}
+        <Route path="/admin/audit" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/admin/logs" element={<Navigate to="/admin/dashboard" replace />} />
 
         {/* Seed page → 404 (removed from production) */}
         <Route path="/admin/seed" element={<NotFound />} />

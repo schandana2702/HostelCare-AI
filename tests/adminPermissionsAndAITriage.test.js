@@ -144,4 +144,125 @@ describe('Admin RBAC & Gemini AI Triage Audit', () => {
       );
     });
   });
+
+  describe('Human-Friendly Complaint IDs & Clean Student Diagnostics', () => {
+    it('10. getFriendlyComplaintId formats raw Firestore IDs deterministically without PII', async () => {
+      const { getFriendlyComplaintId } = await import('../src/utils/complaintUtils.js');
+
+      assert.strictEqual(getFriendlyComplaintId('eiPqKgLWCBuVEBExyvnu'), 'HC-EIPQKG');
+      assert.strictEqual(getFriendlyComplaintId({ id: 'eiPqKgLWCBuVEBExyvnu' }), 'HC-EIPQKG');
+      assert.strictEqual(getFriendlyComplaintId({ ticketId: 'HC-2026-001' }), 'HC-2026-001');
+      assert.strictEqual(getFriendlyComplaintId('HC-CUSTOM-99'), 'HC-CUSTOM-99');
+      assert.strictEqual(getFriendlyComplaintId(null), 'HC-TICKET');
+    });
+
+    it('11. SmartAssistant.jsx does not display raw provider diagnostics to students', () => {
+      const assistantContent = readFileSync(resolve(process.cwd(), 'src/components/ai/SmartAssistant.jsx'), 'utf8');
+
+      assert.strictEqual(
+        assistantContent.includes('Deterministic Engine'),
+        false,
+        'Deterministic Engine must not be shown to students'
+      );
+      assert.strictEqual(
+        assistantContent.includes('Gemini 1.5 Flash (Live)'),
+        false,
+        'Gemini 1.5 Flash (Live) must not be shown to students'
+      );
+      assert.ok(
+        assistantContent.includes('AI Suggestion Available'),
+        'SmartAssistant must show clean "AI Suggestion Available" badge'
+      );
+    });
+
+    it('12. ComplaintDetail.jsx uses clean student-facing AI labels and removes raw confidence', () => {
+      const detailContent = readFileSync(resolve(process.cwd(), 'src/pages/student/ComplaintDetail.jsx'), 'utf8');
+
+      assert.strictEqual(
+        detailContent.includes('Deterministic Engine'),
+        false,
+        'Deterministic Engine must not be displayed in ComplaintDetail'
+      );
+      assert.strictEqual(
+        detailContent.includes('Gemini 1.5 Flash (Live)'),
+        false,
+        'Gemini 1.5 Flash (Live) must not be displayed in ComplaintDetail'
+      );
+      assert.ok(
+        detailContent.includes('AI Assisted Recommendation'),
+        'ComplaintDetail must display clean AI Assisted Recommendation'
+      );
+      assert.ok(
+        detailContent.includes('Automated Priority Assessment'),
+        'ComplaintDetail must display clean Automated Priority Assessment'
+      );
+    });
+  });
+
+  describe('Administrator Navigation & Audit Logs Removal Verification', () => {
+    it('13. Confirms Audit Logs is removed from Sidebar.jsx administrator navigation', () => {
+      const sidebarContent = readFileSync(resolve(process.cwd(), 'src/components/common/Sidebar.jsx'), 'utf8');
+
+      assert.strictEqual(
+        sidebarContent.includes("to: '/admin/logs'"),
+        false,
+        'Audit logs link must not exist in Sidebar navigation'
+      );
+      assert.strictEqual(
+        sidebarContent.includes('label: \'Audit Logs\''),
+        false,
+        'Audit logs label must not exist in Sidebar navigation'
+      );
+
+      // Verify the 5 remaining administrator items
+      assert.ok(sidebarContent.includes('/admin/dashboard'), 'Sidebar must include System Dashboard');
+      assert.ok(sidebarContent.includes('/admin/users'), 'Sidebar must include User Management');
+      assert.ok(sidebarContent.includes('/admin/complaints'), 'Sidebar must include All Complaints');
+      assert.ok(sidebarContent.includes('/admin/hostels'), 'Sidebar must include Hostel Management');
+      assert.ok(sidebarContent.includes('/admin/categories'), 'Sidebar must include Categories & SLA');
+    });
+
+    it('14. Confirms AppRoutes.jsx redirects deprecated /admin/logs and /admin/audit safely to /admin/dashboard', () => {
+      const routesContent = readFileSync(resolve(process.cwd(), 'src/routes/AppRoutes.jsx'), 'utf8');
+
+      assert.strictEqual(
+        routesContent.includes('<AuditLogs'),
+        false,
+        'AppRoutes must not mount AuditLogs component'
+      );
+      assert.ok(
+        routesContent.includes('path="/admin/audit"') && routesContent.includes('to="/admin/dashboard"'),
+        'AppRoutes must redirect /admin/audit to /admin/dashboard'
+      );
+      assert.ok(
+        routesContent.includes('path="/admin/logs"') && routesContent.includes('to="/admin/dashboard"'),
+        'AppRoutes must redirect /admin/logs to /admin/dashboard'
+      );
+    });
+
+    it('15. Confirms AdminDashboard.jsx does not link to Audit Logs and preserves remaining navigation', () => {
+      const dashboardContent = readFileSync(resolve(process.cwd(), 'src/pages/admin/AdminDashboard.jsx'), 'utf8');
+
+      assert.strictEqual(
+        dashboardContent.includes('/admin/logs'),
+        false,
+        'AdminDashboard must not link to /admin/logs'
+      );
+      assert.ok(
+        dashboardContent.includes('/admin/complaints'),
+        'AdminDashboard must link to /admin/complaints'
+      );
+    });
+  });
+
+  describe('Gemini Cloud Function Secret Binding & Response Safety', () => {
+    it('16. functions/index.js binds GEMINI_API_KEY secret securely', () => {
+      const fnContent = readFileSync(resolve(process.cwd(), 'functions/index.js'), 'utf8');
+
+      assert.ok(
+        fnContent.includes("secrets: ['GEMINI_API_KEY']") || fnContent.includes('secrets: ["GEMINI_API_KEY"]'),
+        'triageComplaintAI function must bind GEMINI_API_KEY secret'
+      );
+    });
+  });
 });

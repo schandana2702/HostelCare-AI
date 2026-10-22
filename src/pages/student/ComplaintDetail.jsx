@@ -12,6 +12,7 @@ import FeedbackModal from '../../components/complaint/FeedbackModal';
 import PriorityRecommendationModal from '../../components/intelligence/PriorityRecommendationModal';
 import { calculatePriorityRecommendation } from '../../services/intelligenceService';
 import { formatDateTime, timeAgo, isOverdue } from '../../utils/dateUtils';
+import { getFriendlyComplaintId } from '../../utils/complaintUtils';
 import {
   ArrowLeft,
   MapPin,
@@ -92,7 +93,7 @@ export default function ComplaintDetail() {
         </div>
         <h3 className="text-xl font-black text-white">Complaint Not Found</h3>
         <p className="text-xs sm:text-sm mt-1 max-w-sm mx-auto text-purple-300/70">
-          Ticket #{id} could not be located in the system. It may have been archived or the ID is incorrect.
+          Ticket #{getFriendlyComplaintId(id)} could not be located in the system. It may have been archived or the ID is incorrect.
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
@@ -348,7 +349,7 @@ export default function ComplaintDetail() {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-950/70 text-purple-200 border border-purple-500/30">
-                #{complaint.id}
+                #{getFriendlyComplaintId(complaint)}
               </span>
               <PriorityBadge priority={complaint.priority} />
               <StatusBadge status={complaint.status} />
@@ -426,13 +427,8 @@ export default function ComplaintDetail() {
                     <Sparkles className="w-4 h-4 text-purple-300" />
                     <span className="font-bold text-white">AI Triage Intelligence</span>
                     <span className="text-[10px] bg-purple-500/25 text-purple-200 font-extrabold px-2 py-0.5 rounded-full border border-purple-400/35">
-                      {complaint.aiTriage.provider === 'gemini' ? 'Gemini 1.5 Flash (Live)' : 'Deterministic Engine'}
+                      {complaint.aiTriage.provider === 'gemini' ? 'AI Assisted Recommendation' : 'Automated Priority Assessment'}
                     </span>
-                    {complaint.aiTriage.confidence && (
-                      <span className="text-[10px] text-purple-300/80 font-mono">
-                        ({complaint.aiTriage.confidence}% confidence)
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-purple-300/70">Suggested:</span>

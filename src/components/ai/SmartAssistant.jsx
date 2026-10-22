@@ -18,7 +18,7 @@ export default function SmartAssistant({
   const lastQueryRef = useRef('');
 
   useEffect(() => {
-    const hasEnoughText = (title && title.trim().length > 3) || (description && description.trim().length > 5);
+    const hasEnoughText = (title && title.trim().length >= 3) || (description && description.trim().length >= 3);
 
     if (!hasEnoughText) {
       setAnalysis(null);
@@ -95,22 +95,18 @@ export default function SmartAssistant({
                 HostelCare AI Triage Assistant
               </h4>
 
-              {/* Provider Badge: Live Gemini vs Deterministic Heuristic */}
+              {/* Clean Status Badge */}
               {isLiveGemini ? (
                 <span className="text-[10px] bg-gradient-to-r from-purple-500/30 to-indigo-500/30 text-purple-200 font-extrabold px-2 py-0.5 rounded-full border border-purple-400/40 flex items-center gap-1">
                   <Sparkles className="w-2.5 h-2.5 text-purple-300" />
-                  Gemini 1.5 Flash (Live)
+                  AI Suggestion Available
                 </span>
               ) : (
                 <span className="text-[10px] bg-purple-950/70 text-purple-300/80 font-bold px-2 py-0.5 rounded-full border border-purple-500/25 flex items-center gap-1">
                   <ShieldCheck className="w-2.5 h-2.5 text-purple-400" />
-                  Deterministic Engine
+                  Automated Assessment
                 </span>
               )}
-
-              <span className="text-[10px] bg-purple-500/20 text-purple-300 font-extrabold px-1.5 py-0.5 rounded-full border border-purple-400/30">
-                {analysis.confidence}% confidence
-              </span>
 
               {loadingAI && (
                 <span className="text-[10px] text-purple-300/60 italic flex items-center gap-1">
@@ -121,10 +117,10 @@ export default function SmartAssistant({
 
             <p className="text-[11px] text-purple-300/70 mt-0.5">
               {isLiveGemini
-                ? 'Analyzed with Google Gemini Cloud AI for hostel operations'
-                : analysis.unavailableReason
-                ? `Rule-based fallback active (${analysis.unavailableReason})`
-                : 'Rule-based categorization & urgency assessment active'}
+                ? 'Suggested category and priority based on your complaint description.'
+                : analysis?.category && analysis?.category !== 'other'
+                ? 'Automated suggestion ready based on complaint details.'
+                : 'Automatic analysis is temporarily unavailable. Please select the category and priority manually.'}
             </p>
           </div>
         </div>

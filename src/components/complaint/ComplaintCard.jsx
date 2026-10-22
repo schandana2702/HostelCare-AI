@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../common/StatusBadge';
 import PriorityBadge from '../common/PriorityBadge';
 import { timeAgo, isOverdue } from '../../utils/dateUtils';
+import { getFriendlyComplaintId } from '../../utils/complaintUtils';
 import {
   MapPin,
   Tag,
@@ -38,7 +39,7 @@ export default function ComplaintCard({
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-purple-950/70 text-purple-200 border border-purple-500/30 shadow-xs">
-              #{complaint.id}
+              #{getFriendlyComplaintId(complaint)}
             </span>
             {complaint.isEscalated && (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-300 bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.3)] animate-pulse">

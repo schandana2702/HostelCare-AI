@@ -111,4 +111,45 @@ describe('HostelCare AI Triage & Safety Intelligence Engine', () => {
     assert.ok(complaintData.safetyIndicators.length > 0);
     assert.ok(complaintData.safetyIndicators.some((s) => s.toLowerCase().includes('spark')));
   });
+
+  it('7. Accurately classifies "light", "lights", and "bulb" as electrical category with routine MEDIUM priority', () => {
+    const r1 = analyzeComplaintText('light', '');
+    assert.equal(r1.category, 'electrical', 'Single title "light" must categorize as electrical');
+    assert.equal(r1.priority, 'MEDIUM', 'Routine lighting fixture failure should be standard MEDIUM priority');
+
+    const r2 = analyzeComplaintText('lights', 'Study lights in room 204 are completely off');
+    assert.equal(r2.category, 'electrical', '"lights" must categorize as electrical');
+    assert.equal(r2.priority, 'MEDIUM');
+
+    const r3 = analyzeComplaintText('bulb', 'The ceiling tube bulb is fused and flickering');
+    assert.equal(r3.category, 'electrical', '"bulb" must categorize as electrical');
+    assert.equal(r3.priority, 'MEDIUM');
+  });
+
+  it('8. Correctly avoids classifying ambiguous adjectival "light" (e.g. "light leak", "light dust") as electrical', () => {
+    const leakAnalysis = analyzeComplaintText('light leak in bathroom', 'There is a light water dripping from the washbasin faucet');
+    assert.equal(leakAnalysis.category, 'plumbing', '"light leak" must be categorized as plumbing, not electrical');
+
+    const dustAnalysis = analyzeComplaintText('light dust on table', 'Need light cleaning of study area');
+    assert.equal(dustAnalysis.category, 'cleaning', '"light dust" must be categorized as cleaning, not electrical');
+
+    const scratchAnalysis = analyzeComplaintText('light scratch on door', 'Small scratch on the wooden wardrobe hinge');
+    assert.equal(scratchAnalysis.category, 'carpentry', '"light scratch on door" must be categorized as carpentry, not electrical');
+  });
+
+  it('9. Accurately classifies "wiring" and "power" as electrical with appropriate priority', () => {
+    const wireAnalysis = analyzeComplaintText('faulty wiring', 'Loose wiring near the table socket');
+    assert.equal(wireAnalysis.category, 'electrical');
+
+    const powerAnalysis = analyzeComplaintText('no power in room', 'Total power cut after tripping');
+    assert.equal(powerAnalysis.category, 'electrical');
+    assert.equal(powerAnalysis.priority, 'HIGH', 'Total power cut must be elevated to HIGH priority');
+  });
+
+  it('10. Ensures unrelated generic complaints without electrical keywords do not become electrical', () => {
+    const general = analyzeComplaintText('general inquiry', 'Need general inspection of room inventory');
+    assert.notEqual(general.category, 'electrical', 'Generic complaint must not become electrical');
+    assert.equal(general.category, 'other');
+    assert.equal(general.priority, 'LOW');
+  });
 });

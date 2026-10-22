@@ -12,7 +12,6 @@ import {
   CheckCircle,
   Users,
   Sliders,
-  FileSpreadsheet,
   X,
   Building,
   Package,
@@ -58,8 +57,7 @@ export default function Sidebar({ isOpen, onClose }) {
       { to: '/admin/users', label: 'User Management', icon: Users },
       { to: '/admin/complaints', label: 'All Complaints', icon: ListOrdered },
       { to: '/admin/hostels', label: 'Hostel Management', icon: Building },
-      { to: '/admin/categories', label: 'Categories & SLA', icon: Sliders },
-      { to: '/admin/logs', label: 'Audit Logs', icon: FileSpreadsheet }
+      { to: '/admin/categories', label: 'Categories & SLA', icon: Sliders }
     ];
   }
 

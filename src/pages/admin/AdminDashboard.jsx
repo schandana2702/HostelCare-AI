@@ -10,7 +10,7 @@ import {
   CheckCircle2,
   Flame,
   Layers,
-  FileSpreadsheet,
+  ListOrdered,
   Sparkles
 } from 'lucide-react';
 
@@ -90,10 +90,10 @@ export default function AdminDashboard() {
               <Shield className="w-4 h-4 text-purple-400" /> Hostel Management
             </button>
             <button
-              onClick={() => navigate('/admin/logs')}
+              onClick={() => navigate('/admin/complaints')}
               className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-purple-950/40 hover:bg-purple-900/40 text-purple-200 border border-purple-500/30 transition-all flex items-center gap-2 cursor-pointer"
             >
-              <FileSpreadsheet className="w-4 h-4 text-purple-400" /> Audit Logs
+              <ListOrdered className="w-4 h-4 text-purple-400" /> All Complaints
             </button>
           </div>
         </div>

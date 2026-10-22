@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Building, Edit2, Users, BedDouble, Home, AlertCircle } from 'lucide-react';
 import { HOSTEL_BLOCKS, HOSTEL_BLOCK_META } from '../../utils/constants';
 import { hostelService, DEFAULT_HOSTEL_DATA } from '../../services/hostelService';
+import { userService } from '../../services/userService';
 
 export default function HostelManagement() {
   const [rooms, setRooms] = useState(DEFAULT_HOSTEL_DATA);
@@ -15,8 +16,33 @@ export default function HostelManagement() {
     setLoading(true);
     setError('');
     try {
-      const data = await hostelService.getHostels();
-      setRooms(data);
+      const [hostelData, users] = await Promise.all([
+        hostelService.getHostels(),
+        userService.getUsers().catch((err) => {
+          console.warn('Could not load user roster for hostel room derivation:', err?.message || err);
+          return [];
+        })
+      ]);
+
+      // Calculate real student room occupancy per block
+      const updatedRooms = { ...hostelData };
+      HOSTEL_BLOCKS.forEach((block) => {
+        const studentResidents = (users || []).filter(
+          (u) => u.role === 'student' && u.hostelBlock === block && u.roomNumber
+        );
+        const activeOccupancy = studentResidents.length;
+        const currentBlock = updatedRooms[block] || { total: 0, occupied: 0, floors: block === 'B Block' ? 15 : 1 };
+        const occupied = Math.max(currentBlock.occupied || 0, activeOccupancy);
+        const total = Math.max(currentBlock.total || 0, occupied);
+
+        updatedRooms[block] = {
+          ...currentBlock,
+          occupied,
+          total
+        };
+      });
+
+      setRooms(updatedRooms);
     } catch (err) {
       console.error('Failed to load hostel data from Firestore:', err);
       setError(err.message || 'Failed to load hostel configuration.');

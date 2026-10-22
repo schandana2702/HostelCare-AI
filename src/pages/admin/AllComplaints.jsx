@@ -5,6 +5,7 @@ import StatusBadge from '../../components/common/StatusBadge';
 import PriorityBadge from '../../components/common/PriorityBadge';
 import { Download, ListOrdered, Eye } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
+import { getFriendlyComplaintId } from '../../utils/complaintUtils';
 import { useNavigate } from 'react-router-dom';
 
 export default function AllComplaints() {
@@ -59,7 +60,7 @@ export default function AllComplaints() {
     ];
 
     const rows = complaints.map((c) => [
-      c.id || '',
+      getFriendlyComplaintId(c),
       `"${(c.title || '').replace(/"/g, '""')}"`,
       c.category || '',
       c.priority || '',
@@ -156,7 +157,7 @@ export default function AllComplaints() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="font-mono text-[10px] text-purple-300/60">#{c.id?.slice(0, 8)}</span>
+                    <span className="font-mono text-[10px] text-purple-300/60">#{getFriendlyComplaintId(c)}</span>
                     <h4 className="text-sm font-bold text-white line-clamp-1">
                       {c.title || 'Untitled Complaint'}
                     </h4>
@@ -197,7 +198,7 @@ export default function AllComplaints() {
                   <tr key={c.id || `complaint-${idx}`} className="hover:bg-purple-900/15 transition-colors">
                     <td className="px-5 py-3.5 font-medium">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-purple-400 text-xs font-semibold">#{c.id?.slice(0, 8)}</span>
+                        <span className="font-mono text-purple-400 text-xs font-semibold">#{getFriendlyComplaintId(c)}</span>
                         <span
                           onClick={() => navigate(`/complaint/${c.id}`)}
                           className="font-bold text-white hover:text-purple-300 cursor-pointer line-clamp-1 max-w-xs transition-colors"

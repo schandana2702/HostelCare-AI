@@ -16,6 +16,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
+import { getFriendlyComplaintId } from '../../utils/complaintUtils';
 
 export default function StudentDashboard() {
   const { currentUser } = useAuth();
@@ -59,7 +60,7 @@ export default function StudentDashboard() {
         role: currentUser?.role || 'student'
       });
       setFeedbackComplaint(null);
-      setActionSuccess('Resolution confirmed! Ticket #' + complaintId + ' closed successfully.');
+      setActionSuccess('Resolution confirmed! Ticket #' + getFriendlyComplaintId(complaintId) + ' closed successfully.');
       await loadData();
     } catch (err) {
       console.error('Error submitting feedback:', err);

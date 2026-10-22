@@ -7,45 +7,79 @@ import { httpsCallable } from 'firebase/functions';
  * with deterministic explainable heuristic fallback when AI is unconfigured or offline.
  */
 
+// Context pattern for ambiguous adjectival uses of "light" (e.g. "light leak", "light dust", "light scratch")
+// When matching, "light" should NOT count as an electrical lighting fixture.
+const NON_ELECTRICAL_LIGHT_REGEX = /\blight\s+(?:water\s+)?(?:leak|leaking|leakage|seep|seepage|drip|dripping|drips|overflow|dust|dusty|dirt|stain|stains|smell|odor|cleaning|scratch|scratches|crack|cracks|dent|creak|damage|infestation|bugs?|ants?|cockroach|pests?)/i;
+
 const CATEGORY_RULES = [
   {
     category: 'plumbing',
-    keywords: ['leak', 'leaking', 'tap', 'pipe', 'flush', 'water', 'drain', 'basin', 'geyser leak', 'shower', 'clogged', 'sink', 'sewage', 'overflow'],
+    keywords: [
+      'leak', 'leaking', 'leakage', 'tap', 'taps', 'pipe', 'pipes', 'flush', 'water',
+      'drain', 'drainage', 'basin', 'geyser leak', 'shower', 'clogged', 'clog', 'sink',
+      'sewage', 'overflow', 'dripping', 'drip', 'seepage', 'faucet'
+    ],
     weight: 1.5
   },
   {
     category: 'electrical',
-    keywords: ['fan', 'light', 'tube', 'bulb', 'switch', 'socket', 'wire', 'spark', 'short circuit', 'current', 'power', 'mcb', 'tripping', 'blackout'],
+    keywords: [
+      'fan', 'fans', 'regulator', 'light', 'lights', 'lighting', 'tube', 'tubelight',
+      'bulb', 'bulbs', 'lamp', 'led', 'cfl', 'switch', 'switches', 'switchboard',
+      'socket', 'sockets', 'plug', 'plugs', 'outlet', 'outlets', 'wire', 'wires',
+      'wiring', 'cord', 'spark', 'sparking', 'short circuit', 'current', 'electric shock',
+      'shock', 'power', 'power cut', 'mcb', 'tripping', 'blackout', 'fuse', 'voltage'
+    ],
     weight: 1.6
   },
   {
     category: 'carpentry',
-    keywords: ['door', 'window', 'cupboard', 'almirah', 'bed', 'chair', 'table', 'hinge', 'handle', 'wood', 'latch', 'drawer'],
+    keywords: [
+      'door', 'doors', 'window', 'windows', 'cupboard', 'almirah', 'wardrobe', 'bed',
+      'cot', 'chair', 'table', 'desk', 'hinge', 'hinges', 'handle', 'wood', 'wooden',
+      'latch', 'latches', 'drawer', 'scratch', 'scratches'
+    ],
     weight: 1.3
   },
   {
     category: 'cleaning',
-    keywords: ['clean', 'dirty', 'garbage', 'dust', 'sweep', 'mop', 'trash', 'washroom dirty', 'smell', 'odor', 'stain'],
+    keywords: [
+      'clean', 'cleaning', 'dirty', 'garbage', 'dust', 'dusty', 'sweep', 'mop',
+      'trash', 'washroom dirty', 'smell', 'odor', 'stain', 'stains', 'litter'
+    ],
     weight: 1.2
   },
   {
     category: 'wifi',
-    keywords: ['wifi', 'wi-fi', 'internet', 'router', 'network', 'lan', 'connection', 'slow speed', 'disconnect', 'ethernet', 'no signal'],
+    keywords: [
+      'wifi', 'wi-fi', 'internet', 'router', 'network', 'lan', 'connection',
+      'slow speed', 'disconnect', 'ethernet', 'no signal', 'broadband'
+    ],
     weight: 1.4
   },
   {
     category: 'pest',
-    keywords: ['cockroach', 'rat', 'mouse', 'bedbug', 'bug', 'ant', 'insect', 'mosquito', 'lizard', 'termite'],
+    keywords: [
+      'cockroach', 'cockroaches', 'rat', 'rats', 'mouse', 'mice', 'bedbug', 'bedbugs',
+      'bug', 'bugs', 'ant', 'ants', 'insect', 'insects', 'mosquito', 'mosquitoes',
+      'lizard', 'termite', 'termites'
+    ],
     weight: 1.4
   },
   {
     category: 'security',
-    keywords: ['lock', 'key', 'padlock', 'broken lock', 'stolen', 'theft', 'intruder', 'main door', 'grill', 'balcony lock'],
+    keywords: [
+      'lock', 'padlock', 'broken lock', 'stolen', 'theft', 'intruder',
+      'main door', 'grill', 'balcony lock', 'key lost'
+    ],
     weight: 1.7
   },
   {
     category: 'appliance',
-    keywords: ['ac', 'air conditioner', 'cooler', 'geyser', 'refrigerator', 'water cooler', 'heater', 'purifier', 'iron'],
+    keywords: [
+      'ac', 'air conditioner', 'cooler', 'geyser', 'refrigerator', 'fridge',
+      'water cooler', 'water heater', 'purifier', 'iron'
+    ],
     weight: 1.3
   }
 ];
@@ -71,13 +105,25 @@ const HIGH_KEYWORDS = ['overflow', 'no water', 'total power', 'exam', 'broken gl
  */
 export function analyzeComplaintText(title = '', description = '') {
   const text = `${title} ${description}`.toLowerCase();
+  const isAmbiguousLight = NON_ELECTRICAL_LIGHT_REGEX.test(text);
   
   // 1. Determine Category
   const scores = {};
   for (const rule of CATEGORY_RULES) {
     let matchCount = 0;
     for (const kw of rule.keywords) {
-      if (text.includes(kw)) {
+      // Disambiguate "light", "lights", "lighting" when modifying non-electrical issues (e.g. "light leak", "light dust")
+      if (rule.category === 'electrical' && isAmbiguousLight && (kw === 'light' || kw === 'lights' || kw === 'lighting')) {
+        continue;
+      }
+
+      // Word boundary matching for short words (<= 4 chars) to avoid false partial substring matches
+      if (kw.length <= 4) {
+        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+        if (regex.test(text)) {
+          matchCount += 1;
+        }
+      } else if (text.includes(kw)) {
         matchCount += 1;
       }
     }
@@ -127,9 +173,9 @@ export function analyzeComplaintText(title = '', description = '') {
     predictedPriority = 'HIGH';
     urgencyScore = 75;
     reason = 'Significant inconvenience or critical daily facility disruption.';
-  } else if (maxScore > 2) {
+  } else if (maxScore > 0 && predictedCategory !== 'other') {
     predictedPriority = 'MEDIUM';
-    urgencyScore = 50;
+    urgencyScore = Math.min(70, Math.max(50, Math.round(45 + (maxScore * 10))));
     reason = `Clear symptoms of ${predictedCategory} maintenance required.`;
   } else {
     predictedPriority = 'LOW';
